@@ -54,7 +54,17 @@ class _Observer(object):
                 self.entity_id += '$'
 
     async def __call__(self, delta, old, new, model):
-        await self.callable_(delta, old, new, model)
+        if self.entity_type == 'relation':
+            log.debug('Calling observer (%s %s %s)',
+                      self.entity_id, self.entity_type, self.action)
+        try:
+            await self.callable_(delta, old, new, model)
+        except Exception:
+            log.exception('Error in observer')
+            raise
+        if self.entity_type == 'relation':
+            log.debug('Called observer (%s %s %s)',
+                      self.entity_id, self.entity_type, self.action)
 
     def cares_about(self, delta):
         """Return True if this observer "cares about" (i.e. wants to be
@@ -63,15 +73,23 @@ class _Observer(object):
         """
         if (self.entity_id and delta.get_id() and
                 not re.match(self.entity_id, str(delta.get_id()))):
+            if self.entity_type == 'relation':
+                log.debug('Entity ID mismatch')
             return False
 
         if self.entity_type and self.entity_type != delta.entity:
+            if self.entity_type == 'relation':
+                log.debug('Entity type mismatch')
             return False
 
         if self.action and self.action != delta.type:
+            if self.entity_type == 'relation':
+                log.debug('Action mismatch')
             return False
 
         if self.predicate and not self.predicate(delta):
+            if self.entity_type == 'relation':
+                log.debug('Predicate failure')
             return False
 
         return True
@@ -725,7 +743,14 @@ class Model(object):
             delta.entity, delta.type, delta.get_id())
 
         for o in self.observers:
+            if o.entity_type == 'relation':
+                log.debug('Testing observer (%s %s %s) for delta (%s %s %s)',
+                          o.entity_id, o.entity_type, o.action,
+                          delta.get_id(), delta.entity, delta.type)
             if o.cares_about(delta):
+                if o.entity_type == 'relation':
+                    log.debug('Queuing observer (%s %s %s)',
+                              o.entity_id, o.entity_type, o.action)
                 asyncio.ensure_future(o(delta, old_obj, new_obj, self),
                                       loop=self.loop)
 
@@ -901,9 +926,14 @@ class Model(object):
             endpoints = {}
             for endpoint in delta.data['endpoints']:
                 endpoints[endpoint['application-name']] = endpoint['relation']
+            log.debug('Comparing endpoints: %s vs %s',
+                      endpoints, result.endpoints)
             return endpoints == result.endpoints
 
-        return await self._wait_for_new('relation', None, predicate)
+        log.debug('Waiting for relation %s <-> %s', relation1, relation2)
+        rel = await self._wait_for_new('relation', None, predicate)
+        log.debug('Got relation %s <-> %s', relation1, relation2)
+        return rel
 
     def add_space(self, name, *cidrs):
         """Add a new network space.
