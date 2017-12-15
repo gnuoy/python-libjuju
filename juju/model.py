@@ -448,7 +448,7 @@ class Model:
     async def __aexit__(self, exc_type, exc, tb):
         await self.disconnect()
 
-    async def connect(self, model_name=None, **kwargs):
+    async def connect(self, model_name=None, *args, **kwargs):
         """Connect to a juju model.
 
         If any arguments are specified other than model_name, then
@@ -468,9 +468,9 @@ class Model:
         if not kwargs:
             await self._connector.connect_model(model_name)
         else:
-            if kwargs.get('uuid') is None:
+            if len(args) < 2 and kwargs.get('uuid') is None:
                 raise ValueError('no UUID specified when connecting to model')
-            await self._connector.connect(**kwargs)
+            await self._connector.connect(*args, **kwargs)
         await self._after_connect()
 
     async def connect_model(self, model_name):

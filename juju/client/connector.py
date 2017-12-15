@@ -47,15 +47,18 @@ class Connector:
             raise NoConnectionException('not connected')
         return self._connection
 
-    async def connect(self, **kwargs):
+    async def connect(self, *args, **kwargs):
         """Connect to an arbitrary Juju model.
 
-        kwargs are passed through to Connection.connect()
+        args and kwargs are passed through to Connection.connect()
         """
-        kwargs.setdefault('loop', self.loop)
-        kwargs.setdefault('max_frame_size', self.max_frame_size)
-        kwargs.setdefault('bakery_client', self.bakery_client)
-        self._connection = await Connection.connect(**kwargs)
+        if len(args) < 6:
+            kwargs.setdefault('bakery_client', self.bakery_client)
+        if len(args) < 7:
+            kwargs.setdefault('loop', self.loop)
+        if len(args) < 8:
+            kwargs.setdefault('max_frame_size', self.max_frame_size)
+        self._connection = await Connection.connect(*args, **kwargs)
 
     async def disconnect(self):
         """Shut down the watcher task and close websockets.

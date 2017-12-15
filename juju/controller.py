@@ -42,7 +42,7 @@ class Controller(object):
     def loop(self):
         return self._connector.loop
 
-    async def connect(self, controller_name=None, **kwargs):
+    async def connect(self, controller_name=None, *args, **kwargs):
         """Connect to a Juju controller.
 
         If any arguments are specified other than controller_name,
@@ -63,10 +63,10 @@ class Controller(object):
         else:
             if controller_name is not None:
                 raise ValueError('controller name may not be specified with other connect parameters')
-            if kwargs.get('uuid') is not None:
+            if len(args) >= 2 or kwargs.get('uuid') is not None:
                 # A UUID implies a model connection, not a controller connection.
                 raise ValueError('model UUID specified when connecting to controller')
-            await self._connector.connect(**kwargs)
+            await self._connector.connect(*args, **kwargs)
 
     def is_connected(self):
         """Reports whether the Controller is currently connected."""
