@@ -1107,7 +1107,8 @@ class Model(object):
 
         is_local = (
             entity_url.startswith('local:') or
-            os.path.isdir(entity_url)
+            os.path.isdir(entity_url) or
+            os.path.isfile(entity_url)
         )
         if is_local:
             entity_id = entity_url.replace('local:', '')
@@ -1118,6 +1119,7 @@ class Model(object):
         client_facade = client.ClientFacade.from_connection(self.connection)
 
         is_bundle = ((is_local and
+                      (Path(entity_id).exists()) or
                       (Path(entity_id) / 'bundle.yaml').exists()) or
                      (not is_local and 'bundle/' in entity_id))
 
@@ -1727,8 +1729,11 @@ class BundleHandler(object):
         return bundle
 
     async def fetch_plan(self, entity_id):
-        is_local = not entity_id.startswith('cs:') and os.path.isdir(entity_id)
-        if is_local:
+        is_local = not entity_id.startswith('cs:')
+
+        if is_local and os.path.isfile(entity_id):
+            bundle_yaml = Path(entity_id).read_text()
+        elif is_local and os.path.isdir(entity_id):
             bundle_yaml = (Path(entity_id) / "bundle.yaml").read_text()
         else:
             bundle_yaml = await self.charmstore.files(entity_id,
